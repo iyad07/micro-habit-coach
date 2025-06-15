@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'providers/app_provider.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
+import 'utils/font_helper.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
+  // Helper method to get text theme with fallback
+  TextTheme _getTextTheme(BuildContext context) {
+    return FontHelper.poppinsTextTheme(
+      Theme.of(context).textTheme,
+    ).apply(
+      bodyColor: Colors.white,
+      displayColor: Colors.white,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +39,7 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
           ),
           useMaterial3: true,
-          textTheme: GoogleFonts.poppinsTextTheme(
-            Theme.of(context).textTheme,
-          ).apply(
-            bodyColor: Colors.white,
-            displayColor: Colors.white,
-          ),
+          textTheme: _getTextTheme(context),
           scaffoldBackgroundColor: const Color(0xFF1A1A2E),
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.transparent,

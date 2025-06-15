@@ -11,6 +11,7 @@ class StorageService {
   static const String _userProfileKey = 'user_profile';
   static const String _habitsKey = 'habits';
   static const String _isFirstLaunchKey = 'is_first_launch';
+  static const String _behaviorPatternKey = 'behavior_pattern';
 
   // User Profile methods
   Future<void> saveUserProfile(UserProfile profile) async {
@@ -197,5 +198,203 @@ class StorageService {
       'totalCompletions': totalCompletions,
       'longestStreak': longestStreak,
     };
+  }
+
+  // Behavior Pattern methods for AI learning
+  Future<void> saveBehaviorPattern(Map<String, dynamic> behaviorPattern) async {
+    final prefs = await SharedPreferences.getInstance();
+    final patternJson = jsonEncode(behaviorPattern);
+    await prefs.setString(_behaviorPatternKey, patternJson);
+  }
+
+  Future<Map<String, dynamic>?> getBehaviorPattern() async {
+    final prefs = await SharedPreferences.getInstance();
+    final patternJson = prefs.getString(_behaviorPatternKey);
+    
+    if (patternJson == null) return null;
+    
+    try {
+      final patternMap = jsonDecode(patternJson) as Map<String, dynamic>;
+      return patternMap;
+    } catch (e) {
+      print('Error loading behavior pattern: $e');
+      return null;
+    }
+  }
+
+  Future<void> clearBehaviorPattern() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_behaviorPatternKey);
+  }
+
+  // Enhanced analytics for AI learning
+  Future<Map<String, dynamic>> getDetailedAnalytics() async {
+    final habits = await getHabits();
+    final profile = await getUserProfile();
+    final behaviorPattern = await getBehaviorPattern();
+    
+    final analytics = <String, dynamic>{
+      'total_habits': habits.length,
+      'active_habits': habits.length,
+      'completion_rate': _calculateOverallCompletionRate(habits),
+      'streak_distribution': _getStreakDistribution(habits),
+      'category_performance': _getCategoryPerformance(habits),
+      'time_patterns': _getTimePatterns(habits),
+      'difficulty_preferences': _getDifficultyPreferences(habits),
+      'user_profile': profile?.toJson(),
+      'behavior_insights': behaviorPattern,
+    };
+    
+    return analytics;
+  }
+
+  double _calculateOverallCompletionRate(List<Habit> habits) {
+    if (habits.isEmpty) return 0.0;
+    
+    int totalPossibleCompletions = 0;
+    int actualCompletions = 0;
+    
+    final now = DateTime.now();
+    
+    for (final habit in habits) {
+      final daysSinceCreation = now.difference(habit.createdAt).inDays + 1;
+      totalPossibleCompletions += daysSinceCreation;
+      actualCompletions += habit.completedDates.length;
+    }
+    
+    return totalPossibleCompletions > 0 ? actualCompletions / totalPossibleCompletions : 0.0;
+  }
+
+  Map<String, int> _getStreakDistribution(List<Habit> habits) {
+    final distribution = <String, int>{
+      '0': 0,
+      '1-3': 0,
+      '4-7': 0,
+      '8-14': 0,
+      '15+': 0,
+    };
+    
+    for (final habit in habits) {
+      final streak = habit.currentStreak;
+      if (streak == 0) {
+        distribution['0'] = distribution['0']! + 1;
+      } else if (streak <= 3) {
+        distribution['1-3'] = distribution['1-3']! + 1;
+      } else if (streak <= 7) {
+        distribution['4-7'] = distribution['4-7']! + 1;
+      } else if (streak <= 14) {
+        distribution['8-14'] = distribution['8-14']! + 1;
+      } else {
+        distribution['15+'] = distribution['15+']! + 1;
+      }
+    }
+    
+    return distribution;
+  }
+
+  Map<String, dynamic> _getCategoryPerformance(List<Habit> habits) {
+    final categoryStats = <String, Map<String, dynamic>>{};
+    
+    for (final habit in habits) {
+      final category = habit.category.name;
+      if (!categoryStats.containsKey(category)) {
+        categoryStats[category] = {
+          'count': 0,
+          'total_completions': 0,
+          'average_streak': 0.0,
+          'completion_rate': 0.0,
+        };
+      }
+      
+      categoryStats[category]!['count'] = categoryStats[category]!['count'] + 1;
+      categoryStats[category]!['total_completions'] = 
+          categoryStats[category]!['total_completions'] + habit.completedDates.length;
+    }
+    
+    // Calculate averages
+    for (final category in categoryStats.keys) {
+      final stats = categoryStats[category]!;
+      final count = stats['count'] as int;
+      if (count > 0) {
+        final habitsInCategory = habits.where((h) => h.category.name == category).toList();
+        final totalStreak = habitsInCategory.fold(0, (sum, h) => sum + h.currentStreak);
+        stats['average_streak'] = totalStreak / count;
+        
+        // Calculate completion rate for this category
+        final totalPossible = habitsInCategory.fold(0, (sum, h) => 
+            sum + DateTime.now().difference(h.createdAt).inDays + 1);
+        final totalCompleted = stats['total_completions'] as int;
+        stats['completion_rate'] = totalPossible > 0 ? totalCompleted / totalPossible : 0.0;
+      }
+    }
+    
+    return categoryStats;
+  }
+
+  Map<String, int> _getTimePatterns(List<Habit> habits) {
+    final timePatterns = <String, int>{
+      'morning': 0,
+      'afternoon': 0,
+      'evening': 0,
+      'night': 0,
+    };
+    
+    for (final habit in habits) {
+      for (final completionDate in habit.completedDates) {
+        final hour = completionDate.hour;
+        if (hour >= 6 && hour < 12) {
+          timePatterns['morning'] = timePatterns['morning']! + 1;
+        } else if (hour >= 12 && hour < 17) {
+          timePatterns['afternoon'] = timePatterns['afternoon']! + 1;
+        } else if (hour >= 17 && hour < 22) {
+          timePatterns['evening'] = timePatterns['evening']! + 1;
+        } else {
+          timePatterns['night'] = timePatterns['night']! + 1;
+        }
+      }
+    }
+    
+    return timePatterns;
+  }
+
+  Map<String, dynamic> _getDifficultyPreferences(List<Habit> habits) {
+    final difficultyStats = <String, int>{
+      'easy': 0,
+      'moderate': 0,
+      'challenging': 0,
+    };
+    
+    for (final habit in habits) {
+      // Estimate difficulty based on duration and completion rate
+      final completionRate = habit.completedDates.length / 
+          (DateTime.now().difference(habit.createdAt).inDays + 1);
+      
+      if (completionRate > 0.8) {
+        difficultyStats['easy'] = difficultyStats['easy']! + 1;
+      } else if (completionRate > 0.5) {
+        difficultyStats['moderate'] = difficultyStats['moderate']! + 1;
+      } else {
+        difficultyStats['challenging'] = difficultyStats['challenging']! + 1;
+      }
+    }
+    
+    return {
+      'distribution': difficultyStats,
+      'preferred_difficulty': _getPreferredDifficulty(difficultyStats),
+    };
+  }
+
+  String _getPreferredDifficulty(Map<String, int> difficultyStats) {
+    String preferred = 'moderate';
+    int maxCount = 0;
+    
+    for (final entry in difficultyStats.entries) {
+      if (entry.value > maxCount) {
+        maxCount = entry.value;
+        preferred = entry.key;
+      }
+    }
+    
+    return preferred;
   }
 }

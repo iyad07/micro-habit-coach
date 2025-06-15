@@ -110,23 +110,26 @@ class HabitCard extends StatelessWidget {
           ),
           if (!compact) ...[
             const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildInfoChip(
-                  icon: Icons.timer_outlined,
-                  label: '${habit.durationMinutes} min',
-                ),
-                const SizedBox(width: 12),
-                _buildInfoChip(
-                  icon: Icons.local_fire_department,
-                  label: '${habit.currentStreak} day streak',
-                ),
-                const SizedBox(width: 12),
-                _buildInfoChip(
-                  icon: Icons.category_outlined,
-                  label: habit.category.displayName,
-                ),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildInfoChip(
+                    icon: Icons.timer_outlined,
+                    label: '${habit.durationMinutes} min',
+                  ),
+                  const SizedBox(width: 12),
+                  _buildInfoChip(
+                    icon: Icons.local_fire_department,
+                    label: '${habit.currentStreak} day streak',
+                  ),
+                  const SizedBox(width: 12),
+                  _buildInfoChip(
+                    icon: Icons.category_outlined,
+                    label: habit.category.displayName,
+                  ),
+                ],
+              ),
             ),
           ],
           if (showCompleteButton && !isCompleted && onComplete != null) ...[
@@ -243,9 +246,11 @@ class HabitSuggestionCard extends StatelessWidget {
   final String description;
   final HabitCategory category;
   final int durationMinutes;
+  final String? reasoning;
   final VoidCallback? onAccept;
   final VoidCallback? onReject;
   final bool isLoading;
+  final bool isGenerating;
 
   const HabitSuggestionCard({
     super.key,
@@ -253,9 +258,11 @@ class HabitSuggestionCard extends StatelessWidget {
     required this.description,
     required this.category,
     required this.durationMinutes,
+    this.reasoning,
     this.onAccept,
     this.onReject,
     this.isLoading = false,
+    this.isGenerating = false,
   });
 
   @override
@@ -277,141 +284,256 @@ class HabitSuggestionCard extends StatelessWidget {
           width: 2,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Center(
-                  child: Text(
-                    category.emoji,
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: isGenerating
+          ? _buildLoadingState()
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      'AI Suggestion',
-                      style: GoogleFonts.poppins(
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
                         color: const Color(0xFF6C63FF),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Center(
+                        child: Text(
+                          category.emoji,
+                          style: const TextStyle(fontSize: 24),
+                        ),
                       ),
                     ),
-                    Text(
-                      title,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'AI Suggestion',
+                            style: GoogleFonts.poppins(
+                              color: const Color(0xFF6C63FF),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          Text(
+                            title,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            description,
-            style: GoogleFonts.poppins(
-              color: Colors.white70,
-              fontSize: 14,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildInfoChip(
-                icon: Icons.timer_outlined,
-                label: '$durationMinutes min',
-              ),
-              const SizedBox(width: 12),
-              _buildInfoChip(
-                icon: Icons.category_outlined,
-                label: category.displayName,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: isLoading ? null : onReject,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: const BorderSide(color: Colors.white30),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    'Try Another',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500,
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  description,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.5,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : onAccept,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                if (reasoning != null && reasoning!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
                     ),
-                    elevation: 0,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.check, size: 18),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Accept Habit',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w600,
-                              ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          color: Colors.amber.withOpacity(0.8),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            reasoning!,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white60,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _buildInfoChip(
+                      icon: Icons.timer_outlined,
+                      label: '$durationMinutes min',
+                    ),
+                    const SizedBox(width: 12),
+                    _buildInfoChip(
+                      icon: Icons.category_outlined,
+                      label: category.displayName,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: (isLoading || isGenerating) ? null : onReject,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Colors.white30),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.refresh, size: 16),
+                            const SizedBox(width: 4),
+                            /*Flexible(
+                              child: Text(
+                                'Try Another',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),*/
                           ],
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: (isLoading || isGenerating) ? null : onAccept,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6C63FF),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.check, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Accept Habit',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ],
       ),
     ).animate().slide(
       duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 16,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 14,
+                    width: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'AI is analyzing your preferences...',
+              style: GoogleFonts.poppins(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

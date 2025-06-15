@@ -130,19 +130,54 @@ class AppProvider with ChangeNotifier {
     }
   }
 
-  // Generate habit suggestion
+  // Generate habit suggestion using AI analysis
   Future<void> generateHabitSuggestion() async {
     if (_userProfile?.currentMood == null) return;
     
     try {
-      _currentSuggestion = _aiAgent.generateHabitSuggestion(
+      print('Generating AI suggestion for mood: ${_userProfile!.currentMood}, preferences: ${_userProfile!.preferredCategories}');
+      
+      // Use AI service to generate personalized suggestion
+      final suggestion = await _aiAgent.generatePersonalizedHabitSuggestion(
+        mood: _userProfile!.currentMood!,
+        preferences: _userProfile!.preferredCategories,
+        currentStreak: _todaysHabit?.currentStreak ?? 0,
+        recentCompletions: _getRecentCompletions(),
+      );
+      
+      print('AI suggestion received: $suggestion');
+      
+      final suggestionData = suggestion['suggestion'] as Map<String, dynamic>;
+      _currentSuggestion = {
+        'title': suggestionData['title'] ?? 'Mindful Breathing',
+        'description': suggestionData['description'] ?? 'Take 5 minutes to focus on your breathing',
+        'category': suggestionData['category'] ?? 'Mindfulness',
+        'duration': suggestionData['duration']?.toString() ?? '5',
+        'reasoning': suggestion['reasoning'] ?? 'Based on your current mood and preferences',
+      };
+      
+      print('Final suggestion set: $_currentSuggestion');
+      notifyListeners();
+    } catch (e) {
+      print('Error generating AI habit suggestion: $e');
+      print('Stack trace: ${StackTrace.current}');
+      
+      // Fallback to basic suggestion with proper data mapping
+      final basicSuggestion = _aiAgent.generateHabitSuggestion(
         _userProfile!.currentMood!,
         _userProfile!.preferredCategories,
       );
       
+      print('Using basic suggestion fallback: $basicSuggestion');
+      
+      _currentSuggestion = {
+        'title': basicSuggestion['title'] ?? 'Mindful Breathing',
+        'description': basicSuggestion['description'] ?? 'Take 5 minutes to focus on your breathing',
+        'category': _getCategoryFromBasicSuggestion(basicSuggestion),
+        'duration': _getDurationFromBasicSuggestion(basicSuggestion),
+        'reasoning': basicSuggestion['prompt'] ?? 'Based on your current mood and preferences',
+      };
       notifyListeners();
-    } catch (e) {
-      print('Error generating habit suggestion: $e');
     }
   }
 
@@ -151,14 +186,31 @@ class AppProvider with ChangeNotifier {
     if (_currentSuggestion == null || _userProfile == null) return;
     
     try {
+      // Parse category from suggestion
+      HabitCategory category = HabitCategory.mindfulness;
+      try {
+        category = HabitCategory.values.firstWhere(
+          (cat) => cat.displayName.toLowerCase() == _currentSuggestion!['category']?.toLowerCase(),
+          orElse: () => HabitCategory.mindfulness,
+        );
+      } catch (e) {
+        print('Error parsing category, using default: $e');
+      }
+      
+      // Parse duration from suggestion
+      int duration = 5;
+      try {
+        duration = int.tryParse(_currentSuggestion!['duration'] ?? '5') ?? 5;
+      } catch (e) {
+        print('Error parsing duration, using default: $e');
+      }
+      
       final habit = Habit(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: _currentSuggestion!['title']!,
         description: _currentSuggestion!['description']!,
-        category: _userProfile!.preferredCategories.isNotEmpty 
-            ? _userProfile!.preferredCategories.first 
-            : HabitCategory.mindfulness,
-        durationMinutes: 5, // Default duration
+        category: category,
+        durationMinutes: duration,
         createdAt: DateTime.now(),
       );
       
@@ -166,12 +218,119 @@ class AppProvider with ChangeNotifier {
       _habits = await _storage.getHabits();
       _todaysHabit = habit;
       
+      // Clear current suggestion after acceptance
+      _currentSuggestion = null;
+      
       notifyListeners();
     } catch (e) {
       print('Error accepting habit suggestion: $e');
     }
   }
 
+  // Get recent completions for AI analysis
+  Map<String, int> _getRecentCompletions() {
+    final completions = <String, int>{};
+    final now = DateTime.now();
+    final sevenDaysAgo = now.subtract(const Duration(days: 7));
+    
+    for (final habit in _habits) {
+      final recentCompletions = habit.completedDates
+          .where((completion) => completion.isAfter(sevenDaysAgo))
+          .length;
+      if (recentCompletions > 0) {
+        completions[habit.category.displayName] = recentCompletions;
+      }
+    }
+    
+    return completions;
+  }
+
+  // Helper method to extract category from basic suggestion
+  String _getCategoryFromBasicSuggestion(Map<String, String> suggestion) {
+    final title = suggestion['title']?.toLowerCase() ?? '';
+    final description = suggestion['description']?.toLowerCase() ?? '';
+    
+    // Map keywords to categories
+    if (title.contains('breathing') || title.contains('meditation') || 
+        title.contains('mindful') || title.contains('gratitude')) {
+      return 'Mindfulness';
+    } else if (title.contains('walk') || title.contains('exercise') || 
+               title.contains('stretch') || title.contains('yoga') || 
+               title.contains('dance') || title.contains('workout')) {
+      return 'Physical';
+    } else if (title.contains('nap') || title.contains('music') || 
+               title.contains('relax') || title.contains('calm')) {
+      return 'Relaxation';
+    } else if (title.contains('writing') || title.contains('learning') || 
+               title.contains('journal') || title.contains('read')) {
+      return 'Productivity';
+    }
+    
+    return 'Mindfulness'; // Default fallback
+  }
+
+  // Helper method to extract duration from basic suggestion
+  String _getDurationFromBasicSuggestion(Map<String, String> suggestion) {
+    final title = suggestion['title'] ?? '';
+    final description = suggestion['description'] ?? '';
+    
+    // Extract numbers from title or description
+    final regex = RegExp(r'(\d+)');
+    final titleMatch = regex.firstMatch(title);
+    if (titleMatch != null) {
+      return titleMatch.group(1)!;
+    }
+    
+    final descMatch = regex.firstMatch(description);
+    if (descMatch != null) {
+      return descMatch.group(1)!;
+    }
+    
+    return '5'; // Default duration
+  }
+
+  // Generate next day suggestion based on completed habit
+  Future<void> generateNextDaySuggestion() async {
+    if (_userProfile == null || _todaysHabit == null) return;
+    
+    try {
+      // Try to use the advanced AI method first
+      final suggestion = await _aiAgent.generatePersonalizedHabitSuggestion(
+        mood: _userProfile!.currentMood!,
+        preferences: _userProfile!.preferredCategories,
+        currentStreak: _todaysHabit?.currentStreak ?? 0,
+        recentCompletions: _getRecentCompletions(),
+      );
+      
+      final suggestionData = suggestion['suggestion'] as Map<String, dynamic>;
+      _currentSuggestion = {
+        'title': suggestionData['title'] ?? 'Continue Your Journey',
+        'description': suggestionData['description'] ?? 'Build on today\'s success',
+        'category': suggestionData['category'] ?? 'Mindfulness',
+        'duration': suggestionData['duration']?.toString() ?? '5',
+        'reasoning': suggestion['reasoning'] ?? 'Based on your completed habit',
+      };
+      
+      notifyListeners();
+    } catch (e) {
+      print('Error generating next day suggestion: $e');
+      // Fallback to basic suggestion with proper mapping
+      final basicSuggestion = _aiAgent.generateHabitSuggestion(
+        _userProfile!.currentMood!,
+        _userProfile!.preferredCategories,
+      );
+      
+      _currentSuggestion = {
+        'title': basicSuggestion['title'] ?? 'Continue Your Journey',
+        'description': basicSuggestion['description'] ?? 'Build on today\'s success',
+        'category': _getCategoryFromBasicSuggestion(basicSuggestion),
+        'duration': _getDurationFromBasicSuggestion(basicSuggestion),
+        'reasoning': basicSuggestion['prompt'] ?? 'Based on your completed habit',
+      };
+      notifyListeners();
+    }
+  }
+  
   // Complete today's habit
   Future<void> completeHabit(String habitId) async {
     try {

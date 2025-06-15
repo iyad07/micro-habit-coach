@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class Habit {
   final String id;
   final String title;
@@ -108,6 +110,19 @@ enum HabitCategory {
   
   final String displayName;
   final String emoji;
+  
+  Color get color {
+    switch (this) {
+      case HabitCategory.physical:
+        return const Color(0xFF4CAF50);
+      case HabitCategory.mindfulness:
+        return const Color(0xFF6C63FF);
+      case HabitCategory.relaxation:
+        return const Color(0xFF00BCD4);
+      case HabitCategory.productivity:
+        return const Color(0xFFFF9800);
+    }
+  }
 }
 
 enum UserMood {
