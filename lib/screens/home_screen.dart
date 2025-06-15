@@ -8,6 +8,7 @@ import '../providers/app_provider.dart';
 import '../widgets/habit_card.dart';
 import '../widgets/progress_widget.dart';
 import '../widgets/mood_selector.dart';
+import '../widgets/screen_time_widget.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -162,6 +163,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 // Progress overview
                 if (userProfile != null)
                   ProgressWidget(userProfile: userProfile).animate().fadeIn(delay: 200.ms),
+                const SizedBox(height: 20),
+                
+                // Screen time tracking
+                const ScreenTimeWidget().animate().fadeIn(delay: 300.ms),
                 const SizedBox(height: 20),
                 
                 // AI Chat section
@@ -375,6 +380,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildRecentHabitsSection(List<Habit> habits) {
     if (habits.isEmpty) return const SizedBox.shrink();
 
+    // Sort habits by createdAt in descending order (latest first)
+    final sortedHabits = List<Habit>.from(habits)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -387,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         const SizedBox(height: 12),
-        ...habits.take(3).map((habit) => Padding(
+        ...sortedHabits.take(3).map((habit) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: HabitCard(
             habit: habit,
