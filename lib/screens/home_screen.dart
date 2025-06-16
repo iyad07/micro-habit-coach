@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:micro_habit_tracker/models/user_profile.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,7 +10,7 @@ import '../widgets/habit_card.dart';
 import '../widgets/progress_widget.dart';
 import '../widgets/mood_selector.dart';
 import '../widgets/screen_time_widget.dart';
-import '../services/screen_time_service.dart';
+
 import '../services/ai_agent_service.dart';
 import 'settings_screen.dart';
 import '../utils/font_helper.dart';
@@ -153,7 +154,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             IconButton(
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => kIsWeb
+                        ? Scaffold(
+                            backgroundColor: const Color(0xFF0F0F23),
+                            body: Center(
+                              child: Container(
+                                width: 400,
+                                height: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A1A2E),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      spreadRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                                child: const SettingsScreen(),
+                              ),
+                            ),
+                          )
+                        : const SettingsScreen(),
+                  ),
                 );
               },
               icon: const Icon(Icons.settings, color: Colors.white),
@@ -745,8 +769,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildDigitalWellnessSection() {
+    final appProvider = Provider.of<AppProvider>(context, listen: false);
     return FutureBuilder<double>(
-      future: ScreenTimeService().getTodayScreenTime(),
+      future: appProvider.appUsageService.getTodayScreenTime(),
           builder: (context, snapshot) {
              final totalHours = snapshot.data ?? 0.0;
             //final totalHours = screenTimeData['totalHours'] as double;
@@ -1198,6 +1223,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     
                     return Container(
                       width: 140,
+                      height: 120,
                       margin: const EdgeInsets.only(right: 12),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -1209,6 +1235,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Row(
                             children: [
@@ -1238,17 +1265,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            habit.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          Expanded(
+                            child: Text(
+                              habit.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(height: 8),
                           LinearProgressIndicator(
                             value: completionRate.clamp(0.0, 1.0),
                             backgroundColor: Colors.white.withOpacity(0.2),
@@ -1259,6 +1288,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(height: 4),
                           Text(
                             '${(completionRate * 100).toInt()}% completion',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(
                               color: Colors.white70,
                               fontSize: 10,

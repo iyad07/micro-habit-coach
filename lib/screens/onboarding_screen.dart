@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -73,9 +74,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
 
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+        if (kIsWeb) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => Scaffold(
+                backgroundColor: const Color(0xFF0F0F23),
+                body: Center(
+                  child: Container(
+                    width: 400,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A2E),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: const HomeScreen(),
+                  ),
+                ),
+              ),
+            ),
+          );
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -263,9 +291,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildNamePage() {
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           const Icon(
             Icons.person,
             size: 80,
@@ -318,6 +347,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ).animate().fadeIn(delay: 600.ms),
         ],
+        ),
       ),
     );
   }
@@ -327,9 +357,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           const Icon(
             Icons.mood,
             size: 80,
@@ -370,6 +401,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             },
           ).animate().fadeIn(delay: 600.ms),
         ],
+        ),
       ),
     );
   }
@@ -379,9 +411,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     
     return Padding(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           const Icon(
             Icons.favorite,
             size: 80,
@@ -433,6 +466,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ).animate().fadeIn(delay: 800.ms),
         ],
+        ),
       ),
     );
   }

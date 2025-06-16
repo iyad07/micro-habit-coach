@@ -8,21 +8,22 @@ class StorageService {
   factory StorageService() => _instance;
   StorageService._internal();
 
-  static const String _userProfileKey = 'user_profile';
-  static const String _habitsKey = 'habits';
-  static const String _isFirstLaunchKey = 'is_first_launch';
-  static const String _behaviorPatternKey = 'behavior_pattern';
+  static const String _keyFirstLaunch = 'first_launch';
+  static const String _keyUserProfile = 'user_profile';
+  static const String _keyHabits = 'habits';
+  static const String _keyDemoMode = 'demo_mode';
+  static const String _keyBehaviorPattern = 'behavior_pattern';
 
   // User Profile methods
   Future<void> saveUserProfile(UserProfile profile) async {
     final prefs = await SharedPreferences.getInstance();
     final profileJson = jsonEncode(profile.toJson());
-    await prefs.setString(_userProfileKey, profileJson);
+    await prefs.setString(_keyUserProfile, profileJson);
   }
 
   Future<UserProfile?> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final profileJson = prefs.getString(_userProfileKey);
+    final profileJson = prefs.getString(_keyUserProfile);
     
     if (profileJson == null) return null;
     
@@ -39,12 +40,12 @@ class StorageService {
   Future<void> saveHabits(List<Habit> habits) async {
     final prefs = await SharedPreferences.getInstance();
     final habitsJson = jsonEncode(habits.map((habit) => habit.toJson()).toList());
-    await prefs.setString(_habitsKey, habitsJson);
+    await prefs.setString(_keyHabits, habitsJson);
   }
 
   Future<List<Habit>> getHabits() async {
     final prefs = await SharedPreferences.getInstance();
-    final habitsJson = prefs.getString(_habitsKey);
+    final habitsJson = prefs.getString(_keyHabits);
     
     if (habitsJson == null) return [];
     
@@ -136,12 +137,23 @@ class StorageService {
   // First launch methods
   Future<bool> isFirstLaunch() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_isFirstLaunchKey) ?? true;
+    return prefs.getBool(_keyFirstLaunch) ?? true;
   }
 
   Future<void> setFirstLaunchComplete() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_isFirstLaunchKey, false);
+    await prefs.setBool(_keyFirstLaunch, false);
+  }
+  
+  // Demo mode methods
+  Future<bool> getDemoMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyDemoMode) ?? false;
+  }
+  
+  Future<void> setDemoMode(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyDemoMode, enabled);
   }
 
   // Clear all data (for testing or reset)
@@ -204,12 +216,12 @@ class StorageService {
   Future<void> saveBehaviorPattern(Map<String, dynamic> behaviorPattern) async {
     final prefs = await SharedPreferences.getInstance();
     final patternJson = jsonEncode(behaviorPattern);
-    await prefs.setString(_behaviorPatternKey, patternJson);
+    await prefs.setString(_keyBehaviorPattern, patternJson);
   }
 
   Future<Map<String, dynamic>?> getBehaviorPattern() async {
     final prefs = await SharedPreferences.getInstance();
-    final patternJson = prefs.getString(_behaviorPatternKey);
+    final patternJson = prefs.getString(_keyBehaviorPattern);
     
     if (patternJson == null) return null;
     
@@ -224,7 +236,7 @@ class StorageService {
 
   Future<void> clearBehaviorPattern() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_behaviorPatternKey);
+    await prefs.remove(_keyBehaviorPattern);
   }
 
   // Enhanced analytics for AI learning

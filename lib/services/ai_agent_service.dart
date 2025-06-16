@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/habit.dart';
 import '../models/user_profile.dart';
 import 'storage_service.dart';
-import 'screen_time_service.dart';
+import 'app_usage_service.dart';
 
 // Habit difficulty levels
 enum HabitDifficulty { easy, moderate, challenging }
@@ -16,7 +16,7 @@ class AIAgentService {
   AIAgentService._internal();
 
   final StorageService _storageService = StorageService();
-  final ScreenTimeService _screenTimeService = ScreenTimeService();
+  final AppUsageService _appUsageService = AppUsageService.create();
   
   // Screen time thresholds (in hours)
   static const double _highScreenTimeThreshold = 6.0;
@@ -63,10 +63,10 @@ class AIAgentService {
     // If no data provided, try to collect it automatically
     if (screenTimeHours == null || appUsage == null) {
       try {
-        if (_screenTimeService.isSupported()) {
-          if (await _screenTimeService.hasPermissions()) {
-            actualScreenTime = screenTimeHours ?? await _screenTimeService.getTodayScreenTime();
-            actualAppUsage = appUsage ?? await _screenTimeService.getTodayAppUsage();
+        if (_appUsageService.isSupported()) {
+          if (await _appUsageService.hasPermissions()) {
+            actualScreenTime = screenTimeHours ?? await _appUsageService.getTodayScreenTime();
+            actualAppUsage = appUsage ?? await _appUsageService.getTodayAppUsage();
           } else {
             // Return analysis indicating permission needed
             return {
@@ -78,7 +78,7 @@ class AIAgentService {
               'appUsageAnalysis': null,
               'timestamp': DateTime.now().toIso8601String(),
               'permissionRequired': true,
-              'supportMessage': _screenTimeService.getSupportMessage(),
+              'supportMessage': _appUsageService.getSupportMessage(),
             };
           }
         } else {
@@ -1922,28 +1922,28 @@ Analyze the emotional tone, keywords, and context to make your classification.''
   
   /// Check if screen time tracking is supported on this device
   bool isScreenTimeSupported() {
-    return _screenTimeService.isSupported();
+    return _appUsageService.isSupported();
   }
   
   /// Check if the app has screen time permissions
   Future<bool> hasScreenTimePermissions() async {
-    return await _screenTimeService.hasPermissions();
+    return await _appUsageService.hasPermissions();
   }
   
   /// Request screen time permissions from the user
   Future<bool> requestScreenTimePermissions() async {
-    return await _screenTimeService.requestPermissions();
+    return await _appUsageService.requestPermissions();
   }
   
   /// Get a user-friendly message about screen time support
   String getScreenTimeSupportMessage() {
-    return _screenTimeService.getSupportMessage();
+    return _appUsageService.getSupportMessage();
   }
   
   /// Get comprehensive screen time analysis for today
   Future<Map<String, dynamic>> getTodayScreenTimeAnalysis() async {
     try {
-      return await _screenTimeService.getScreenTimeAnalysis();
+      return await _appUsageService.getScreenTimeAnalysis();
     } catch (e) {
       return {
         'totalHours': 0.0,

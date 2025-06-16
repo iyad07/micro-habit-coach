@@ -10,8 +10,8 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
-  final AIAgentService _aiAgent = AIAgentService();
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  final AIAgentService _aiAgentService = AIAgentService();
 
   Future<void> initialize() async {
     try {
@@ -30,7 +30,7 @@ class NotificationService {
         iOS: iosSettings,
       );
       
-      await _notifications.initialize(
+      await _notificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
@@ -51,7 +51,7 @@ class NotificationService {
   }
 
   Future<void> _requestIOSPermissions() async {
-    await _notifications
+    await _notificationsPlugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(
           alert: true,
@@ -61,7 +61,7 @@ class NotificationService {
   }
 
   Future<void> _requestAndroidExactAlarmPermission() async {
-    final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidImplementation = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (androidImplementation != null) {
       try {
         // Check if exact alarms are permitted
@@ -79,7 +79,7 @@ class NotificationService {
 
   Future<bool> _canScheduleExactAlarms() async {
     if (Platform.isAndroid) {
-      final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidImplementation != null) {
         try {
           return await androidImplementation.canScheduleExactNotifications() ?? false;
@@ -102,10 +102,10 @@ class NotificationService {
     
     try {
       // Cancel existing reminder
-      await _notifications.cancel(0);
+      await _notificationsPlugin.cancel(0);
       
       // Get a random reminder message
-      final message = _aiAgent.getRandomMessage(_aiAgent.reminderMessages);
+      final message = _aiAgentService.getRandomMessage(_aiAgentService.reminderMessages);
       
       // Check if we can schedule exact alarms
       final canScheduleExact = await _canScheduleExactAlarms();
@@ -114,7 +114,7 @@ class NotificationService {
           : AndroidScheduleMode.inexactAllowWhileIdle;
       
       // Schedule new reminder
-      await _notifications.zonedSchedule(
+      await _notificationsPlugin.zonedSchedule(
         0, // notification id
         'Micro-Habit Reminder 🌟',
         message,
@@ -165,7 +165,7 @@ class NotificationService {
         ? 'Great job completing "$habitTitle"! Your streak starts now! 🎉'
         : 'Amazing! You\'ve completed "$habitTitle" for $streak days in a row! 🔥';
     
-    await _notifications.show(
+    await _notificationsPlugin.show(
       1, // notification id
       'Habit Completed! 🎉',
       message,
@@ -207,7 +207,7 @@ class NotificationService {
       return; // Don't show notification for other numbers
     }
     
-    await _notifications.show(
+    await _notificationsPlugin.show(
       2, // notification id
       title,
       message,
@@ -238,9 +238,9 @@ class NotificationService {
       'Your future self is cheering you on! 🎉',
     ];
     
-    final message = _aiAgent.getRandomMessage(motivationalMessages);
+    final message = _aiAgentService.getRandomMessage(motivationalMessages);
     
-    await _notifications.show(
+    await _notificationsPlugin.show(
       3, // notification id
       'You\'ve Got This! 🌟',
       message,
@@ -263,19 +263,19 @@ class NotificationService {
   }
 
   Future<void> cancelAllNotifications() async {
-    await _notifications.cancelAll();
+    await _notificationsPlugin.cancelAll();
   }
 
   Future<void> cancelDailyReminder() async {
-    await _notifications.cancel(0);
+    await _notificationsPlugin.cancel(0);
   }
 
   Future<bool> areNotificationsEnabled() async {
     if (Platform.isAndroid) {
-      final androidImplementation = _notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       return await androidImplementation?.areNotificationsEnabled() ?? false;
     } else if (Platform.isIOS) {
-      final iosImplementation = _notifications.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      final iosImplementation = _notificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
       final settings = await iosImplementation?.requestPermissions();
       return settings == true;
     }

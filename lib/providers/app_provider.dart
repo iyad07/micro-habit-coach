@@ -5,11 +5,15 @@ import '../models/user_profile.dart';
 import '../services/storage_service.dart';
 import '../services/ai_agent_service.dart';
 import '../services/notification_service.dart';
+import '../services/app_usage_service.dart';
+import 'demo_mode_provider.dart';
 
 class AppProvider with ChangeNotifier {
-  final StorageService _storage = StorageService();
-  final AIAgentService _aiAgent = AIAgentService();
-  final NotificationService _notifications = NotificationService();
+  final StorageService _storageService = StorageService();
+  final AIAgentService _aiAgentService = AIAgentService();
+  final NotificationService _notificationService = NotificationService();
+  final DemoModeProvider _demoModeProvider = DemoModeProvider();
+  late final AppUsageService _appUsageService;
 
   UserProfile? _userProfile;
   List<Habit> _habits = [];
@@ -25,27 +29,38 @@ class AppProvider with ChangeNotifier {
   bool get isFirstLaunch => _isFirstLaunch;
   Habit? get todaysHabit => _todaysHabit;
   Map<String, String>? get currentSuggestion => _currentSuggestion;
-  AIAgentService get aiAgent => _aiAgent;
+  AIAgentService get aiAgent => _aiAgentService;
+  StorageService get storageService => _storageService;
+  NotificationService get notificationService => _notificationService;
+  AppUsageService get appUsageService => _appUsageService;
+  DemoModeProvider get demoModeProvider => _demoModeProvider;
 
   // Initialize the app
   Future<void> initialize() async {
     _isLoading = true;
 
     try {
+      // Initialize demo mode provider
+      // Skip demo mode initialization since method doesn't exist
+      _demoModeProvider; // Access provider to ensure it's instantiated
+      
+      // Initialize app usage service with demo mode context
+      _appUsageService = AppUsageService.create(demoModeProvider: _demoModeProvider);
+      
       // Initialize notifications with error handling
       try {
-        await _notifications.initialize();
+        await _notificationService.initialize();
       } catch (notificationError) {
         print('Notification initialization failed: $notificationError');
         // Continue app initialization even if notifications fail
       }
       
       // Check if first launch
-      _isFirstLaunch = await _storage.isFirstLaunch();
+      _isFirstLaunch = await _storageService.isFirstLaunch();
       
       // Load user profile and habits
-      _userProfile = await _storage.getUserProfile();
-      _habits = await _storage.getHabits();
+      _userProfile = await _storageService.getUserProfile();
+      _habits = await _storageService.getHabits();
       
       // Get today's habit if user exists
       if (_userProfile != null) {
@@ -73,8 +88,8 @@ class AppProvider with ChangeNotifier {
       );
       
       // Save profile
-      await _storage.saveUserProfile(_userProfile!);
-      await _storage.setFirstLaunchComplete();
+      await _storageService.saveUserProfile(_userProfile!);
+      await _storageService.setFirstLaunchComplete();
       
       // Generate first habit suggestion
       await generateHabitSuggestion();
@@ -99,7 +114,7 @@ class AppProvider with ChangeNotifier {
         lastMoodUpdate: DateTime.now(),
       );
       
-      await _storage.saveUserProfile(_userProfile!);
+      await _storageService.saveUserProfile(_userProfile!);
       
       // Generate new suggestion based on mood
       await generateHabitSuggestion();
@@ -119,7 +134,7 @@ class AppProvider with ChangeNotifier {
         preferredCategories: preferences,
       );
       
-      await _storage.saveUserProfile(_userProfile!);
+      await _storageService.saveUserProfile(_userProfile!);
       
       // Generate new suggestion based on preferences
       await generateHabitSuggestion();
@@ -138,7 +153,7 @@ class AppProvider with ChangeNotifier {
       print('Generating AI suggestion for mood: ${_userProfile!.currentMood}, preferences: ${_userProfile!.preferredCategories}');
       
       // Use AI service to generate personalized suggestion
-      final suggestion = await _aiAgent.generatePersonalizedHabitSuggestion(
+      final suggestion = await _aiAgentService.generatePersonalizedHabitSuggestion(
         mood: _userProfile!.currentMood!,
         preferences: _userProfile!.preferredCategories,
         currentStreak: _todaysHabit?.currentStreak ?? 0,
@@ -163,7 +178,7 @@ class AppProvider with ChangeNotifier {
       print('Stack trace: ${StackTrace.current}');
       
       // Fallback to basic suggestion with proper data mapping
-      final basicSuggestion = _aiAgent.generateHabitSuggestion(
+      final basicSuggestion = _aiAgentService.generateHabitSuggestion(
         _userProfile!.currentMood!,
         _userProfile!.preferredCategories,
       );
@@ -214,8 +229,8 @@ class AppProvider with ChangeNotifier {
         createdAt: DateTime.now(),
       );
       
-      await _storage.addHabit(habit);
-      _habits = await _storage.getHabits();
+      await _storageService.addHabit(habit);
+      _habits = await _storageService.getHabits();
       _todaysHabit = habit;
       
       // Clear current suggestion after acceptance
@@ -295,7 +310,7 @@ class AppProvider with ChangeNotifier {
     
     try {
       // Try to use the advanced AI method first
-      final suggestion = await _aiAgent.generatePersonalizedHabitSuggestion(
+      final suggestion = await _aiAgentService.generatePersonalizedHabitSuggestion(
         mood: _userProfile!.currentMood!,
         preferences: _userProfile!.preferredCategories,
         currentStreak: _todaysHabit?.currentStreak ?? 0,
@@ -315,7 +330,7 @@ class AppProvider with ChangeNotifier {
     } catch (e) {
       print('Error generating next day suggestion: $e');
       // Fallback to basic suggestion with proper mapping
-      final basicSuggestion = _aiAgent.generateHabitSuggestion(
+      final basicSuggestion = _aiAgentService.generateHabitSuggestion(
         _userProfile!.currentMood!,
         _userProfile!.preferredCategories,
       );
@@ -334,21 +349,21 @@ class AppProvider with ChangeNotifier {
   // Complete today's habit
   Future<void> completeHabit(String habitId) async {
     try {
-      await _storage.completeHabit(habitId);
-      _habits = await _storage.getHabits();
+      await _storageService.completeHabit(habitId);
+      _habits = await _storageService.getHabits();
       
       // Find the completed habit
       final completedHabit = _habits.firstWhere((h) => h.id == habitId);
       
       // Show completion notification
-      await _notifications.showHabitCompletionNotification(
+      await _notificationService.showHabitCompletionNotification(
         completedHabit.title,
         completedHabit.currentStreak,
       );
       
       // Check for streak milestones
       if (completedHabit.currentStreak > 1) {
-        await _notifications.showStreakMilestoneNotification(
+        await _notificationService.showStreakMilestoneNotification(
           completedHabit.currentStreak,
         );
       }
@@ -368,7 +383,7 @@ class AppProvider with ChangeNotifier {
   // Load today's habit
   Future<void> _loadTodaysHabit() async {
     try {
-      _todaysHabit = await _storage.getTodaysHabit();
+      _todaysHabit = await _storageService.getTodaysHabit();
       notifyListeners();
     } catch (e) {
       print('Error loading today\'s habit: $e');
@@ -380,14 +395,14 @@ class AppProvider with ChangeNotifier {
     if (_userProfile == null) return;
     
     try {
-      final stats = await _storage.getCompletionStats();
+      final stats = await _storageService.getCompletionStats();
       
       _userProfile = _userProfile!.copyWith(
         totalHabitsCompleted: stats['totalCompletions']!,
         longestStreak: stats['longestStreak']!,
       );
       
-      await _storage.saveUserProfile(_userProfile!);
+      await _storageService.saveUserProfile(_userProfile!);
     } catch (e) {
       print('Error updating user stats: $e');
     }
@@ -397,7 +412,7 @@ class AppProvider with ChangeNotifier {
   Future<void> _scheduleNotifications() async {
     if (_userProfile != null) {
       try {
-        await _notifications.scheduleDailyReminder(_userProfile!);
+        await _notificationService.scheduleDailyReminder(_userProfile!);
       } catch (e) {
         print('Failed to schedule notifications: $e');
         // Continue without notifications if scheduling fails
@@ -416,12 +431,12 @@ class AppProvider with ChangeNotifier {
         reminderMinute: minute,
       );
       
-      await _storage.saveUserProfile(_userProfile!);
+      await _storageService.saveUserProfile(_userProfile!);
       
       if (enabled) {
         await _scheduleNotifications();
       } else {
-        await _notifications.cancelDailyReminder();
+        await _notificationService.cancelDailyReminder();
       }
       
       notifyListeners();
@@ -432,7 +447,7 @@ class AppProvider with ChangeNotifier {
 
   // Get completion statistics
   Future<Map<String, int>> getCompletionStats() async {
-    return await _storage.getCompletionStats();
+    return await _storageService.getCompletionStats();
   }
 
   // Get motivational message based on progress
@@ -442,26 +457,26 @@ class AppProvider with ChangeNotifier {
     final totalCompleted = _userProfile!.totalHabitsCompleted;
     final longestStreak = _userProfile!.longestStreak;
     
-    final messages = _aiAgent.getProgressMessages(totalCompleted, longestStreak);
-    return _aiAgent.getRandomMessage(messages);
+    final messages = _aiAgentService.getProgressMessages(totalCompleted, longestStreak);
+    return _aiAgentService.getRandomMessage(messages);
   }
 
   // Get completion message for a specific streak
   String getCompletionMessage(int streak) {
-    final messages = _aiAgent.getCompletionMessages(streak);
-    return _aiAgent.getRandomMessage(messages);
+    final messages = _aiAgentService.getCompletionMessages(streak);
+    return _aiAgentService.getRandomMessage(messages);
   }
 
   // Get missed habit message
   String getMissedHabitMessage() {
-    return _aiAgent.getRandomMessage(_aiAgent.missedHabitMessages);
+    return _aiAgentService.getRandomMessage(_aiAgentService.missedHabitMessages);
   }
 
   // Reset app data (for testing)
   Future<void> resetAppData() async {
     try {
-      await _storage.clearAllData();
-      await _notifications.cancelAllNotifications();
+      await _storageService.clearAllData();
+      await _notificationService.cancelAllNotifications();
       
       _userProfile = null;
       _habits = [];

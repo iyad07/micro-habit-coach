@@ -6,6 +6,8 @@ import '../models/habit.dart';
 import '../providers/app_provider.dart';
 import '../widgets/preference_selector.dart';
 import '../widgets/mood_selector.dart';
+import '../widgets/demo_mode_toggle.dart';
+import '../providers/demo_mode_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -213,6 +215,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               
               // Notifications section
               _buildNotificationsSection(),
+              const SizedBox(height: 30),
+              
+              // Demo Mode section
+              _buildDemoModeSection(),
               const SizedBox(height: 30),
               
               // Statistics section
@@ -522,6 +528,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child,
         ],
       ),
+    );
+  }
+
+  Widget _buildDemoModeSection() {
+    return _buildSection(
+      title: 'Demo Mode',
+      icon: Icons.science,
+      child: const DemoModeToggle(),
+      iconColor: Colors.orange,
     );
   }
 }
